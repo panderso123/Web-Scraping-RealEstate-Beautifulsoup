@@ -1,0 +1,86 @@
+/* VENDORED VERBATIM from ~/business/active/creator-lab-vault/public/assets/anderson.css
+   (Anderson House Style source of truth) on 2026-08-23 — re-copy to update; do not edit here. */
+/* ============================================================================
+   ANDERSON HOUSE STYLE - Frank Lloyd Wright drafting-room system
+   ----------------------------------------------------------------------------
+   Single source of truth for every property. Palette is MEASURED from the
+   house art (landmark-art-pipeline/restyled/frankllyodwright_oil.png), not
+   invented: plaster #F5EFE0, tan #D5CCB4, honey oak #BD905C, Cherokee
+   red-brown #B3402C (text-deepened #B3402C), walnut #4E2D20, taupe #33698C,
+   sage #C9C06A (text-deepened #6E8A1F).
+
+   Use from any Worker or page:
+     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Bitter:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+     <link rel="stylesheet" href="https://vault.creativeconquests.online/assets/anderson.css">
+
+   Art crops (golden-ratio cut, same origin):
+     /assets/art/study-hero.jpg   1600x988   (phi frame)
+     /assets/art/study-wide.jpg   2400x916   (phi^2 cinematic hero)
+     /assets/art/study-band.jpg   1600x233   (phi^4 band; heights 144/89 = Fibonacci)
+
+   Rules of the house: golden-ratio type scale (steps x1.272 - alternate steps
+   sit phi apart), Fibonacci spacing (5 8 13 21 34 55 89), double drafting
+   rules on structural edges, square corners (2-4px), tracked-caps Josefin for
+   structure, Bitter slab for reading, mono for data. One red accent; ochre,
+   sage, taupe as colored-pencil secondaries. Both themes always.
+   ========================================================================== */
+
+:root{
+  --bg:#F5EFE0; --surface:#FBF4E2; --surface-2:#EAE3CE; --line:#D5CCB4;
+  --ink:#2B2620; --muted:#6E675A;
+  --accent:#B3402C; --accent-bg:#F4DCD3; --accent-ink:#FCF8EC;
+  --ochre:#C8901F; --ochre-bg:#F3E6BC;
+  --ice:#33698C; --ice-bg:#D6E7F0;
+  --good:#6E8A1F; --good-bg:#E6ECC6;
+  --warn:#C8901F; --danger:#B3402C; --danger-bg:#F4DCD3;
+  --t9:9.5px; --t12:12px; --t15:15px; --t19:19px; --t24:24px; --t31:31px; --t39:39px;
+  --s1:5px; --s2:8px; --s3:13px; --s4:21px; --s5:34px; --s6:55px; --s7:89px;
+  --disp:"Josefin Sans",system-ui,sans-serif;
+  --serif:"Bitter",Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1C1A16; --surface:#26231E; --surface-2:#2F2B25; --line:#454036;
+  --ink:#EDE8DC; --muted:#A8A090;
+  --accent:#E85F3F; --accent-bg:#3B241D; --accent-ink:#1C1A16;
+  --ochre:#F0B94F; --ochre-bg:#3B3116;
+  --ice:#6FA7CC; --ice-bg:#232E36;
+  --good:#AFC24D; --good-bg:#2E331B;
+  --warn:#F0B94F; --danger:#E85F3F; --danger-bg:#3B241D;
+}}
+:root[data-theme="dark"]{
+  --bg:#1C1A16; --surface:#26231E; --surface-2:#2F2B25; --line:#454036;
+  --ink:#EDE8DC; --muted:#A8A090;
+  --accent:#E85F3F; --accent-bg:#3B241D; --accent-ink:#1C1A16;
+  --ochre:#F0B94F; --ochre-bg:#3B3116;
+  --ice:#6FA7CC; --ice-bg:#232E36;
+  --good:#AFC24D; --good-bg:#2E331B;
+  --warn:#F0B94F; --danger:#E85F3F; --danger-bg:#3B241D;
+}
+
+/* ---- base ---- */
+.anderson, body.anderson{
+  margin:0; background:var(--bg); background-image:var(--grain);
+  color:var(--ink); font-family:var(--serif); font-size:var(--t15); line-height:1.58;
+  -webkit-font-smoothing:antialiased;
+}
+.anderson h1,.anderson h2,.anderson h3{font-family:var(--disp);letter-spacing:.06em;text-transform:uppercase;line-height:1.15;text-wrap:balance}
+.anderson h1{font-size:var(--t31);font-weight:700}
+.anderson h2{font-size:var(--t19);font-weight:700;padding-bottom:var(--s1);border-bottom:3px double var(--line)}
+.anderson h3{font-size:var(--t15);font-weight:600}
+.anderson a{color:var(--accent);text-underline-offset:3px}
+.anderson .eyebrow{font-family:var(--mono);font-size:var(--t9);letter-spacing:.19em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.anderson .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---- primitives ---- */
+.anderson .a-mast{position:sticky;top:0;z-index:30;background:var(--bg);background-image:var(--grain);border-bottom:3px double var(--ink)}
+.anderson .a-hero{position:relative;height:clamp(233px,38vh,377px);background-image:url(https://vault.creativeconquests.online/assets/art/study-wide.jpg);background-size:cover;background-position:center 45%;border-bottom:3px double var(--ink)}
+.anderson .a-band{height:144px;background-image:url(https://vault.creativeconquests.online/assets/art/study-band.jpg);background-size:cover;background-position:center 62%;border-bottom:3px double var(--ink)}
+.anderson .a-card{border:1px solid var(--line);border-top:2px solid var(--ink);border-radius:0 0 4px 4px;padding:var(--s4);background:var(--surface)}
+.anderson .a-btn{display:inline-block;padding:var(--s3) var(--s4);border:1px solid var(--line);border-radius:3px;background:var(--surface);cursor:pointer;font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.anderson .a-btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.anderson .a-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:2px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.anderson .a-rule{border:0;border-top:3px double var(--line);margin:var(--s5) 0}
+@media (max-width:640px){ .anderson .a-hero{height:233px} .anderson .a-band{height:89px} }
+@media (prefers-reduced-motion:reduce){ .anderson *{animation:none!important;transition:none!important} }

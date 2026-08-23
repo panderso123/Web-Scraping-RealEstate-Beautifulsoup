@@ -102,9 +102,31 @@ launchctl load ~/Library/LaunchAgents/com.peter.realestate-ingest.plist
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/listings` | filters: `city, q, min_price, max_price, beds, sort(price\|scraped), dir, limit` |
-| GET | `/api/stats` | totals, per-city counts, price avg/min/max, last ingest |
-| POST | `/api/ingest` | `Authorization: Bearer <INGEST_TOKEN>`, body `{city, rows:[…]}` |
+| GET | `/api/listings` | filters: `city, q, min_price, max_price, beds, type, absentee=1, corporate=1, min_discount, min_yield, enriched=1`; `sort(price\|scraped\|ppsf\|dom\|discount\|yield\|value)`, `dir`, `limit` |
+| GET | `/api/stats` | totals, enriched count, per-city/type counts, price + yield averages, budget |
+| GET | `/api/budget` | RentCast calls used this month vs `RENTCAST_MONTHLY_CAP` (default 50 = free tier) |
+| GET | `/api/export.csv` | lead-list CSV of the current filter set (same params as /api/listings) |
+| POST | `/api/ingest` | Bearer `INGEST_TOKEN`; body `{city, rows:[…]}` |
+| POST | `/api/refresh` | Bearer; pull sale listings from RentCast (`?city=&state=` or CITIES var); 1 call/city |
+| POST | `/api/enrich` | Bearer; body `{id}` — owner record + AVM value/comps + rent estimate for one listing = **3 RentCast calls**; results cached in D1 forever |
+
+## PropStream-style layer
+
+Enrichment computes per property: **absentee owner** (mailing ≠ property address),
+**corporate owner**, **discount-to-value %** (list vs AVM), **gross rent yield %**,
+plus sale history, year built, and top value comps. Deal chips in the UI filter on
+these; Export CSV produces a lead list. A hard budget cap (`RENTCAST_MONTHLY_CAP`
+var) makes RentCast-spending routes refuse with 429 rather than silently exceed
+the free tier. Not included (data RentCast doesn't have): pre-foreclosures,
+liens, skip tracing.
+
+## Design
+
+The dashboard wears the **Anderson House Style** — `public/assets/anderson.css`
+is a VERBATIM vendored copy of the source of truth at
+`~/business/active/creator-lab-vault/public/assets/anderson.css` (the hosted
+vault copy 403'd intermittently, so assets are served same-origin). To update
+the style, re-copy the file; do not edit the vendored copy.
 
 ## Local dev
 

@@ -3,38 +3,41 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Real Estate Listings</title>
+  <title>Real Estate Deals</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>" />
-  <!-- ANDERSON HOUSE STYLE — consumed exactly as anderson.css documents:
-       hosted single source of truth at vault.creativeconquests.online. -->
+  <!-- ANDERSON HOUSE STYLE — vendored verbatim same-origin (the hosted vault
+       copy 403'd intermittently; re-copy assets/anderson.css to update) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Bitter:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="https://vault.creativeconquests.online/assets/anderson.css">
+  <link rel="stylesheet" href="/assets/anderson.css">
   <style>
-    /* Dashboard-specific layout on top of the house system. Uses only house
-       tokens (--bg/--surface/--line/--ink/--accent/…, Fibonacci --s*, type --t*)
-       so both themes come free and future anderson.css evolution flows in. */
-    .wrap { max-width: 1240px; margin: 0 auto; padding: var(--s4) var(--s4) var(--s6); }
-    .mast-inner { max-width: 1240px; margin: 0 auto; padding: var(--s3) var(--s4); display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; }
+    /* same-origin art (the css's .a-band points at the vault; override to our vendored copy) */
+    .anderson .a-band { background-image: url(/assets/art/study-band.jpg); }
+    .wrap { max-width: 1300px; margin: 0 auto; padding: var(--s4) var(--s4) var(--s6); }
+    .mast-inner { max-width: 1300px; margin: 0 auto; padding: var(--s3) var(--s4); display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; }
     .mast-inner h1 { font-size: var(--t24); margin: 0; }
-    .osrow { max-width: 1240px; margin: 0 auto; padding: var(--s1) var(--s4) 0; display: flex; gap: var(--s3); font-family: var(--mono); font-size: var(--t9); letter-spacing: .19em; text-transform: uppercase; }
+    .osrow { max-width: 1300px; margin: 0 auto; padding: var(--s1) var(--s4) 0; display: flex; gap: var(--s3); font-family: var(--mono); font-size: var(--t9); letter-spacing: .19em; text-transform: uppercase; }
     .osrow a { color: var(--muted); text-decoration: none; }
     .osrow a:hover { color: var(--accent); }
     .osrow a.oshere { color: var(--accent); font-weight: 600; }
-    /* stale = ochre chip (pigment on chip bg, ink text — house 'text-deepened' rule) */
     #stale { margin-left: auto; font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; padding: 3px 6px; border-radius: 2px; background: var(--ochre-bg); color: var(--ink); border: 1px solid var(--line); }
 
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--s3); margin: var(--s4) 0; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--s3); margin: var(--s4) 0; }
     .stat { border: 1px solid var(--line); border-top: 2px solid var(--ink); border-radius: 0 0 4px 4px; background: var(--surface); padding: var(--s3) var(--s4); }
-    /* stat number = documented stat-tile primitive: Josefin 700 --t31 */
     .stat .v { font-family: var(--disp); font-variant-numeric: tabular-nums; font-size: var(--t31); font-weight: 700; margin-top: var(--s1); }
 
-    .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s3); align-items: end; margin-bottom: var(--s4); }
+    .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--s3); align-items: end; }
     .f label { display: block; font-family: var(--mono); font-size: var(--t9); font-weight: 600; letter-spacing: .19em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--s1); }
     .f input, .f select { width: 100%; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); font-family: var(--serif); font-size: var(--t15); }
     .f input:focus, .f select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .actions { display: flex; gap: var(--s2); }
+    .actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+    /* deal chips */
+    .chips { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); }
+    .chip { font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; padding: var(--s1) var(--s2); border: 1px solid var(--line); border-radius: 2px; background: var(--surface-2); color: var(--muted); cursor: pointer; }
+    .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .table-wrap { border: 1px solid var(--line); border-top: 2px solid var(--ink); border-radius: 0 0 4px 4px; background: var(--surface); overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: var(--t15); }
@@ -44,14 +47,29 @@
     .sortbtn:hover, .sortbtn:focus-visible { color: var(--accent); }
     .sortbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     th .arrow { font-size: var(--t9); }
-    tbody tr:hover { background: var(--surface-2); }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover, tbody tr:focus-within { background: var(--surface-2); }
     td { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--t12); }
-    td.addr { font-family: var(--serif); font-size: var(--t15); white-space: normal; min-width: 220px; }
+    td.addr { font-family: var(--serif); font-size: var(--t15); white-space: normal; min-width: 200px; }
     td.price { color: var(--ink); font-weight: 600; }
+    .disc-pos { color: var(--good); font-weight: 600; }
+    .flag { font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; padding: 2px 5px; border-radius: 2px; border: 1px solid var(--line); background: var(--ochre-bg); color: var(--ink); }
     .empty, .loading, .errbox { padding: var(--s5); text-align: center; color: var(--muted); font-family: var(--serif); }
     .errbox { color: var(--danger); }
     .foot { font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: var(--s3); }
     .colophon { margin-top: var(--s5); padding-top: var(--s3); border-top: 3px double var(--line); font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; gap: var(--s4); flex-wrap: wrap; }
+
+    /* detail drawer */
+    .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 92vw); background: var(--surface); border-left: 3px double var(--ink); box-shadow: -8px 0 34px rgba(0,0,0,.25); transform: translateX(105%); transition: transform .18s ease; overflow-y: auto; z-index: 40; padding: var(--s4); }
+    .drawer.open { transform: none; }
+    .drawer h2 { margin-top: var(--s4); }
+    .drawer .addr-title { font-family: var(--serif); font-size: var(--t19); font-weight: 600; margin: var(--s3) 0; }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: var(--s1) var(--s3); font-size: var(--t12); }
+    .kv dt { font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); align-self: baseline; }
+    .kv dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .drawer .close { float: right; }
+    .comps td { font-size: var(--t9); }
+    @media (prefers-reduced-motion: reduce) { .drawer { transition: none; } }
     @media (prefers-reduced-motion: no-preference) { .loading { animation: pulse 1.2s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .45; } } }
   </style>
 </head>
@@ -61,11 +79,11 @@
       <a href="https://creativeconquests.online">Creative Conquests</a>
       <a href="https://vault.creativeconquests.online/">Vault</a>
       <a href="https://vault.creativeconquests.online/hub/">Hub</a>
-      <a class="oshere" href="/" aria-current="page">Listings</a>
+      <a class="oshere" href="/" aria-current="page">Deals</a>
     </div>
     <div class="mast-inner">
-      <h1>Real Estate Listings</h1>
-      <span class="eyebrow">Licensed RentCast data &middot; refreshed daily</span>
+      <h1>Real Estate Deals</h1>
+      <span class="eyebrow">Licensed RentCast data &middot; valuations &middot; owner records</span>
       <span id="stale" hidden></span>
     </div>
   </nav>
@@ -76,7 +94,7 @@
     <h2>Market</h2>
     <section class="stats" id="stats" aria-label="Summary statistics"></section>
 
-    <h2>Listings</h2>
+    <h2>Deals</h2>
     <section class="a-card" style="margin: var(--s4) 0;">
       <div class="filters">
         <div class="f"><label for="f-city">City</label><select id="f-city"><option value="">All cities</option></select></div>
@@ -88,7 +106,15 @@
         <div class="actions">
           <button class="a-btn primary" id="apply">Apply</button>
           <button class="a-btn" id="reset">Reset</button>
+          <a class="a-btn" id="export" href="/api/export.csv" download>Export CSV</a>
         </div>
+      </div>
+      <div class="chips" role="group" aria-label="Deal filters">
+        <button class="chip" id="c-absentee" aria-pressed="false">Absentee owner</button>
+        <button class="chip" id="c-corporate" aria-pressed="false">Corporate owner</button>
+        <button class="chip" id="c-discount" aria-pressed="false">Discount &ge; 10%</button>
+        <button class="chip" id="c-yield" aria-pressed="false">Yield &ge; 8%</button>
+        <button class="chip" id="c-enriched" aria-pressed="false">Enriched only</button>
       </div>
     </section>
 
@@ -97,15 +123,14 @@
         <thead>
           <tr>
             <th scope="col" data-sort="scraped" aria-sort="descending"><button class="sortbtn">Address <span class="arrow" id="a-scraped" aria-hidden="true"></span></button></th>
-            <th scope="col">Type</th>
-            <th scope="col">Status</th>
+            <th scope="col">Flags</th>
             <th scope="col" data-sort="price" aria-sort="none"><button class="sortbtn">Price <span class="arrow" id="a-price" aria-hidden="true"></span></button></th>
+            <th scope="col" data-sort="value" aria-sort="none"><button class="sortbtn">Est. Value <span class="arrow" id="a-value" aria-hidden="true"></span></button></th>
+            <th scope="col" data-sort="discount" aria-sort="none"><button class="sortbtn">Disc% <span class="arrow" id="a-discount" aria-hidden="true"></span></button></th>
+            <th scope="col" data-sort="yield" aria-sort="none"><button class="sortbtn">Yield% <span class="arrow" id="a-yield" aria-hidden="true"></span></button></th>
             <th scope="col" data-sort="ppsf" aria-sort="none"><button class="sortbtn">$/SqFt <span class="arrow" id="a-ppsf" aria-hidden="true"></span></button></th>
-            <th scope="col">Beds</th>
-            <th scope="col">Baths</th>
-            <th scope="col">SqFt</th>
+            <th scope="col">Bd/Ba</th>
             <th scope="col" data-sort="dom" aria-sort="none"><button class="sortbtn">DOM <span class="arrow" id="a-dom" aria-hidden="true"></span></button></th>
-            <th scope="col">Agent</th>
             <th scope="col">City</th>
           </tr>
         </thead>
@@ -121,13 +146,22 @@
       <span>Cloudflare Worker + D1</span>
       <span>Anderson House Style</span>
       <span>Data: RentCast (licensed)</span>
+      <span id="budget"></span>
     </footer>
   </main>
+
+  <aside class="drawer" id="drawer" aria-label="Property detail" aria-hidden="true">
+    <button class="a-btn close" id="d-close">Close</button>
+    <p class="eyebrow" id="d-flags"></p>
+    <p class="addr-title" id="d-addr"></p>
+    <div id="d-body"></div>
+  </aside>
 
   <script>
     const $ = (s) => document.querySelector(s);
     let sort = "scraped", dir = "desc";
-    const fmtPrice = (n, t) => n != null ? "$" + Number(n).toLocaleString() : (t && t !== "Not specified" ? t : "—");
+    let lastRows = [];
+    const money = (n) => n != null ? "$" + Number(n).toLocaleString() : "—";
     const esc = (s) => (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
     const dash = (v) => (v == null || v === "NoV" || v === "Not specified") ? "—" : esc(v);
 
@@ -137,60 +171,77 @@
       return r.json();
     }
 
+    function filterParams() {
+      const p = new URLSearchParams();
+      const vals = { city: $("#f-city").value, type: $("#f-type").value, q: $("#f-q").value.trim(),
+                     min_price: $("#f-min").value, max_price: $("#f-max").value, beds: $("#f-beds").value };
+      for (const [k, v] of Object.entries(vals)) if (v) p.set(k, v);
+      if ($("#c-absentee").getAttribute("aria-pressed") === "true") p.set("absentee", "1");
+      if ($("#c-corporate").getAttribute("aria-pressed") === "true") p.set("corporate", "1");
+      if ($("#c-discount").getAttribute("aria-pressed") === "true") p.set("min_discount", "10");
+      if ($("#c-yield").getAttribute("aria-pressed") === "true") p.set("min_yield", "8");
+      if ($("#c-enriched").getAttribute("aria-pressed") === "true") p.set("enriched", "1");
+      return p;
+    }
+
     async function loadStats() {
       const s = await getJSON("/api/stats");
-      const money = (n) => n ? "$" + Math.round(n).toLocaleString() : "—";
       $("#stats").innerHTML = [
-        ["Total listings", s.total],
-        ["Cities", (s.cities || []).length],
-        ["Avg price", money(s.price?.avg)],
-        ["Avg $/sqft", money(s.price?.avg_ppsf)],
-        ["Last updated", s.last_ingest ? new Date(s.last_ingest + "Z").toLocaleDateString() : "never"],
+        ["Listings", s.total],
+        ["Enriched", s.enriched],
+        ["Avg price", money(s.price?.avg != null ? Math.round(s.price.avg) : null)],
+        ["Avg $/sqft", money(s.price?.avg_ppsf != null ? Math.round(s.price.avg_ppsf) : null)],
+        ["Avg yield", s.price?.avg_yield != null ? s.price.avg_yield.toFixed(1) + "%" : "—"],
+        ["Updated", s.last_ingest ? new Date(s.last_ingest + "Z").toLocaleDateString() : "never"],
       ].map(([k, v]) => `<div class="stat"><div class="eyebrow">${k}</div><div class="v">${v}</div></div>`).join("");
 
       if (s.last_ingest) {
         const ageH = (Date.now() - new Date(s.last_ingest + "Z")) / 36e5;
         if (ageH > 36) { $("#stale").hidden = false; $("#stale").textContent = `⚠ data is ${Math.round(ageH)}h old`; }
       }
+      if (s.budget) $("#budget").textContent = `RentCast ${s.budget.used}/${s.budget.cap} calls · ${s.budget.month}`;
 
       const citySel = $("#f-city"), curCity = citySel.value;
       citySel.innerHTML = '<option value="">All cities</option>' +
         (s.cities || []).map((c) => `<option value="${esc(c.city)}">${esc(c.city)} (${c.n})</option>`).join("");
       citySel.value = curCity;
-
       const typeSel = $("#f-type"), curType = typeSel.value;
       typeSel.innerHTML = '<option value="">All types</option>' +
         (s.types || []).map((t) => `<option value="${esc(t.property_type)}">${esc(t.property_type)} (${t.n})</option>`).join("");
       typeSel.value = curType;
     }
 
+    function rowFlags(r) {
+      const f = [];
+      if (r.absentee === 1) f.push("ABS");
+      if (r.corporate_owner === 1) f.push("CORP");
+      return f;
+    }
+
     async function loadRows() {
       $("#loading").hidden = false; $("#err").hidden = true; $("#empty").hidden = true;
       try {
-        const p = new URLSearchParams();
-        const vals = { city: $("#f-city").value, type: $("#f-type").value, q: $("#f-q").value.trim(),
-                       min_price: $("#f-min").value, max_price: $("#f-max").value, beds: $("#f-beds").value };
-        for (const [k, v] of Object.entries(vals)) if (v) p.set(k, v);
+        const p = filterParams();
         p.set("sort", sort); p.set("dir", dir); p.set("limit", "500");
+        $("#export").href = "/api/export.csv?" + p;
 
         const data = await getJSON("/api/listings?" + p);
-        const rows = data.listings || [];
+        const rows = lastRows = data.listings || [];
         $("#empty").hidden = rows.length > 0;
-        $("#rows").innerHTML = rows.map((r) => `
-          <tr>
+        $("#rows").innerHTML = rows.map((r, i) => `
+          <tr data-i="${i}" tabindex="0">
             <td class="addr">${esc(r.location)}</td>
-            <td>${dash(r.property_type)}</td>
-            <td><span class="a-tag">${dash(r.status)}</span></td>
-            <td class="price">${fmtPrice(r.price_num, r.price_text)}</td>
-            <td>${r.price_per_sqft != null ? "$" + Number(r.price_per_sqft).toLocaleString() : "—"}</td>
-            <td>${dash(r.bed)}</td>
-            <td>${dash(r.bath)}</td>
-            <td>${dash(r.sqft)}</td>
+            <td>${rowFlags(r).map((f) => `<span class="flag">${f}</span>`).join(" ") || "—"}</td>
+            <td class="price">${r.price_num != null ? money(r.price_num) : dash(r.price_text)}</td>
+            <td>${money(r.avm_value)}</td>
+            <td>${r.discount_pct != null ? `<span class="${r.discount_pct > 0 ? "disc-pos" : ""}">${r.discount_pct.toFixed(1)}%</span>` : "—"}</td>
+            <td>${r.gross_yield_pct != null ? r.gross_yield_pct.toFixed(1) + "%" : "—"}</td>
+            <td>${r.price_per_sqft != null ? money(r.price_per_sqft) : "—"}</td>
+            <td>${dash(r.bed)}/${dash(r.bath)}</td>
             <td>${r.days_on_market != null ? esc(r.days_on_market) : "—"}</td>
-            <td>${dash(r.owner)}</td>
             <td>${dash(r.city)}</td>
           </tr>`).join("");
-        $("#foot").textContent = `Showing ${rows.length} listing(s) · sorted by ${sort} (${dir})`;
+        $("#foot").textContent = `Showing ${rows.length} listing(s) · sorted by ${sort} (${dir}) · click a row for owner & comps`;
       } catch (e) {
         $("#err").hidden = false; $("#err").textContent = "Failed to load listings: " + e.message;
       } finally {
@@ -202,16 +253,116 @@
       }
     }
 
+    /* ---------- detail drawer ---------- */
+    function openDrawer(r) {
+      $("#d-flags").textContent = rowFlags(r).join(" · ") || (r.enriched_at ? "Enriched" : "Not enriched");
+      $("#d-addr").textContent = r.location;
+      let names = [];
+      try { names = JSON.parse(r.owner_names || "[]"); } catch {}
+      let comps = [];
+      try { comps = JSON.parse(r.comps_json || "[]"); } catch {}
+      const enriched = !!r.enriched_at;
+      $("#d-body").innerHTML = `
+        <h2>Listing</h2>
+        <dl class="kv">
+          <dt>Price</dt><dd>${money(r.price_num)}</dd>
+          <dt>Status</dt><dd>${dash(r.status)}</dd>
+          <dt>Type</dt><dd>${dash(r.property_type)}</dd>
+          <dt>Bd/Ba/SqFt</dt><dd>${dash(r.bed)} / ${dash(r.bath)} / ${dash(r.sqft)}</dd>
+          <dt>DOM</dt><dd>${r.days_on_market ?? "—"}</dd>
+          <dt>Agent</dt><dd>${dash(r.owner)}</dd>
+        </dl>
+        ${enriched ? `
+        <h2>Valuation</h2>
+        <dl class="kv">
+          <dt>Est. value</dt><dd>${money(r.avm_value)} <span style="color:var(--muted)">(${money(r.avm_low)}–${money(r.avm_high)})</span></dd>
+          <dt>Discount</dt><dd>${r.discount_pct != null ? r.discount_pct.toFixed(1) + "%" : "—"}</dd>
+          <dt>Rent est.</dt><dd>${money(r.rent_est)}/mo <span style="color:var(--muted)">(${money(r.rent_low)}–${money(r.rent_high)})</span></dd>
+          <dt>Gross yield</dt><dd>${r.gross_yield_pct != null ? r.gross_yield_pct.toFixed(1) + "%/yr" : "—"}</dd>
+        </dl>
+        <h2>Owner</h2>
+        <dl class="kv">
+          <dt>Name(s)</dt><dd>${names.map(esc).join(", ") || "—"}</dd>
+          <dt>Type</dt><dd>${dash(r.owner_type)} ${r.corporate_owner === 1 ? '<span class="flag">CORP</span>' : ""}</dd>
+          <dt>Mailing</dt><dd>${dash(r.owner_mailing)} ${r.absentee === 1 ? '<span class="flag">ABS</span>' : ""}</dd>
+          <dt>Last sale</dt><dd>${r.last_sale_date ? esc(String(r.last_sale_date).slice(0, 10)) + " · " + money(r.last_sale_price) : "—"}</dd>
+          <dt>Year built</dt><dd>${r.year_built ?? "—"}</dd>
+        </dl>
+        ${comps.length ? `
+        <h2>Comps</h2>
+        <table class="comps"><thead><tr><th scope="col">Address</th><th scope="col">Price</th><th scope="col">SqFt</th><th scope="col">Mi</th></tr></thead>
+        <tbody>${comps.map((c) => `<tr><td>${esc(c.address)}</td><td>${money(c.price)}</td><td>${c.sqft ?? "—"}</td><td>${c.distance != null ? Number(c.distance).toFixed(1) : "—"}</td></tr>`).join("")}</tbody></table>` : ""}
+        <p class="foot">Enriched ${esc(String(r.enriched_at))}</p>
+        ` : `
+        <h2>Enrich</h2>
+        <p style="font-size:var(--t12)">Pull the owner record, value estimate + comps, and rent estimate for this property. <b>Costs 3 RentCast calls.</b></p>
+        <button class="a-btn primary" id="d-enrich" data-id="${r.id}">Enrich property</button>
+        <p class="errbox" id="d-err" hidden style="text-align:left;padding:var(--s2) 0"></p>
+        `}`;
+      const btn = $("#d-enrich");
+      if (btn) btn.addEventListener("click", () => enrich(r));
+      $("#drawer").classList.add("open");
+      $("#drawer").setAttribute("aria-hidden", "false");
+    }
+
+    function closeDrawer() { $("#drawer").classList.remove("open"); $("#drawer").setAttribute("aria-hidden", "true"); }
+    $("#d-close").addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+    async function enrich(r) {
+      let token = localStorage.getItem("admin_token");
+      if (!token) {
+        token = prompt("Admin token (INGEST_TOKEN) — required to spend RentCast calls:");
+        if (!token) return;
+        localStorage.setItem("admin_token", token);
+      }
+      const errEl = $("#d-err"); errEl.hidden = true;
+      try {
+        const resp = await fetch("/api/enrich", {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: "Bearer " + token },
+          body: JSON.stringify({ id: r.id }),
+        });
+        const out = await resp.json();
+        if (!resp.ok) {
+          if (resp.status === 401) localStorage.removeItem("admin_token");
+          throw new Error(out.error || `HTTP ${resp.status}`);
+        }
+        await loadStats(); await loadRows();
+        const fresh = lastRows.find((x) => x.id === r.id);
+        if (fresh) openDrawer(fresh);
+      } catch (e) {
+        errEl.hidden = false; errEl.textContent = String(e.message || e);
+      }
+    }
+
+    /* ---------- events ---------- */
+    $("#rows").addEventListener("click", (e) => {
+      const tr = e.target.closest("tr[data-i]");
+      if (tr) openDrawer(lastRows[Number(tr.dataset.i)]);
+    });
+    $("#rows").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        const tr = e.target.closest("tr[data-i]");
+        if (tr) { e.preventDefault(); openDrawer(lastRows[Number(tr.dataset.i)]); }
+      }
+    });
     document.querySelectorAll("th[data-sort] .sortbtn").forEach((btn) => btn.addEventListener("click", () => {
       const s = btn.closest("th").dataset.sort;
       if (sort === s) dir = dir === "desc" ? "asc" : "desc"; else { sort = s; dir = "desc"; }
+      loadRows();
+    }));
+    document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => {
+      c.setAttribute("aria-pressed", c.getAttribute("aria-pressed") === "true" ? "false" : "true");
       loadRows();
     }));
     $("#apply").addEventListener("click", loadRows);
     ["f-city","f-type"].forEach((id) => $("#"+id).addEventListener("change", loadRows));
     $("#reset").addEventListener("click", () => {
       ["f-q","f-min","f-max","f-beds"].forEach((id) => $("#"+id).value = "");
-      $("#f-city").value = ""; $("#f-type").value = ""; sort = "scraped"; dir = "desc"; loadRows();
+      $("#f-city").value = ""; $("#f-type").value = "";
+      document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", "false"));
+      sort = "scraped"; dir = "desc"; loadRows();
     });
     $("#f-q").addEventListener("keydown", (e) => { if (e.key === "Enter") loadRows(); });
 
