@@ -367,8 +367,9 @@ function buildOffmarketQuery(p: URLSearchParams) {
   const q = p.get("q"); if (q) { where.push("(situs_address LIKE ? OR owner_name LIKE ?)"); binds.push(`%${q}%`, `%${q}%`); }
   const minv = p.get("min_value"); if (minv) { where.push("actual_value >= ?"); binds.push(parseInt(minv, 10)); }
   const maxv = p.get("max_value"); if (maxv) { where.push("actual_value <= ?"); binds.push(parseInt(maxv, 10)); }
+  const myield = p.get("min_yield"); if (myield) { where.push("gross_yield_pct >= ?"); binds.push(parseFloat(myield)); }
   const limit = Math.min(parseInt(p.get("limit") || "200", 10) || 200, 1000);
-  const sortCol = ({ value: "actual_value", sale: "last_sale_date", year: "year_built" } as Record<string, string>)[p.get("sort") || ""] || "actual_value";
+  const sortCol = ({ value: "actual_value", sale: "last_sale_date", year: "year_built", yield: "gross_yield_pct" } as Record<string, string>)[p.get("sort") || ""] || "actual_value";
   const dir = (p.get("dir") || "desc").toLowerCase() === "asc" ? "ASC" : "DESC";
   const sql = `SELECT * FROM offmarket
     ${where.length ? "WHERE " + where.join(" AND ") : ""}
@@ -507,6 +508,91 @@ export default {
         }
         const ok = Object.keys(errors).length === 0;
         return json({ ok, refreshed, errors }, ok ? 200 : 207);
+      }
+
+      if (pathname === "/api/offmarket/enrich" && request.method === "POST") {
+        if (!authed(request, env)) return json({ error: "Unauthorized" }, 401);
+        const body = (await request.json().catch(() => ({}))) as { id?: number; mock?: { rent?: number } };
+        const id = Number(body.id);
+        if (!id) return json({ error: "Missing 'id'" }, 400);
+        const row = await env.DB.prepare("SELECT id, situs_address, situs_city, actual_value FROM offmarket WHERE id = ?")
+          .bind(id).first<{ id: number; situs_address: string; situs_city: string | null; actual_value: number | null }>();
+        if (!row) return json({ error: `No off-market lead ${id}` }, 404);
+
+        let rent: number | null;
+        if (body.mock) {
+          rent = body.mock.rent ?? null;
+        } else {
+          if (!env.RENTCAST_API_KEY) return json({ error: "RENTCAST_API_KEY not set" }, 500);
+          try {
+            await reserveCalls(env, 1); // rent estimate = 1 RentCast call
+            const addr = `${row.situs_address}, ${row.situs_city || ""}, CO`;
+            const r: any = await rcGet(env, "/avm/rent/long-term", { address: addr, compCount: "10" });
+            rent = r.rent ?? null;
+          } catch (e: any) {
+            return json({ error: String(e?.message || e) }, e?.budget ? 429 : 502);
+          }
+        }
+        const yieldPct = rent && row.actual_value ? Math.round(((rent * 12) / row.actual_value) * 1000) / 10 : null;
+        await env.DB.prepare(
+          "UPDATE offmarket SET rent_est=?, gross_yield_pct=?, rent_enriched_at=datetime('now') WHERE id=?"
+        ).bind(rent, yieldPct, id).run();
+        return json({ ok: true, id, rent_est: rent, gross_yield_pct: yieldPct, budget: await getBudget(env) });
+      }
+
+      if (pathname === "/api/foreclosures" && request.method === "GET") {
+        const p = url.searchParams;
+        const where: string[] = []; const binds: unknown[] = [];
+        const county = p.get("county"); if (county) { where.push("county = ?"); binds.push(county); }
+        const q = p.get("q"); if (q) { where.push("(property_address LIKE ? OR owner_name LIKE ?)"); binds.push(`%${q}%`, `%${q}%`); }
+        const limit = Math.min(parseInt(p.get("limit") || "300", 10) || 300, 1000);
+        const { results } = await env.DB.prepare(
+          `SELECT * FROM foreclosures ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ned_date DESC NULLS LAST LIMIT ?`
+        ).bind(...binds, limit).all();
+        return json({ count: results.length, foreclosures: results });
+      }
+
+      if (pathname === "/api/foreclosures.csv" && request.method === "GET") {
+        const county = url.searchParams.get("county");
+        const { results } = await env.DB.prepare(
+          `SELECT * FROM foreclosures ${county ? "WHERE county = ?" : ""} ORDER BY ned_date DESC NULLS LAST LIMIT 2000`
+        ).bind(...(county ? [county] : [])).all();
+        const cols = ["property_address", "county", "owner_name", "current_amount", "original_note",
+                      "ned_date", "sale_date", "fc_number", "status", "source_pdf"];
+        const escCsv = (v: unknown) => v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+        const csv = [cols.join(","), ...results.map((r: any) => cols.map((c) => escCsv(r[c])).join(","))].join("\n");
+        return new Response(csv, { headers: {
+          "content-type": "text/csv; charset=utf-8",
+          "content-disposition": `attachment; filename="preforeclosures-${monthKey()}.csv"`,
+          "access-control-allow-origin": "*" } });
+      }
+
+      if (pathname === "/api/foreclosure/ingest" && request.method === "POST") {
+        if (!authed(request, env)) return json({ error: "Unauthorized" }, 401);
+        const body = (await request.json().catch(() => ({}))) as { county?: string; source_pdf?: string; records?: any[] };
+        const county = (String(body.county || "")).trim();
+        const records = Array.isArray(body.records) ? body.records : [];
+        if (!county) return json({ error: "Missing 'county'" }, 400);
+        if (!records.length) return json({ error: "No records" }, 400);
+        const stmt = env.DB.prepare(
+          `INSERT INTO foreclosures (county, fc_number, status, owner_name, property_address,
+             current_amount, original_note, ned_date, first_pub_date, sale_date, source_pdf, fetched_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+           ON CONFLICT(county, fc_number) DO UPDATE SET
+             status=excluded.status, owner_name=excluded.owner_name, property_address=excluded.property_address,
+             current_amount=excluded.current_amount, original_note=excluded.original_note,
+             ned_date=excluded.ned_date, first_pub_date=excluded.first_pub_date, sale_date=excluded.sale_date,
+             source_pdf=excluded.source_pdf, fetched_at=excluded.fetched_at`
+        );
+        const toInt = (v: unknown) => { const n = parseNum(v); return n; };
+        const batch = records.filter((r) => r.fc_number).map((r) => stmt.bind(
+          county, String(r.fc_number), r.status ?? null, r.owner_name ?? null, r.property_address ?? null,
+          toInt(r.current_amount), toInt(r.original_note), r.ned_date ?? null, r.first_pub_date ?? null,
+          r.sale_date ?? null, body.source_pdf ?? null
+        ));
+        if (!batch.length) return json({ error: "No valid records" }, 400);
+        await env.DB.batch(batch);
+        return json({ ok: true, county, ingested: batch.length });
       }
 
       if (pathname === "/api/enrich" && request.method === "POST") {

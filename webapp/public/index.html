@@ -162,6 +162,7 @@
           <tr>
             <th scope="col">Property</th>
             <th scope="col">Value</th>
+            <th scope="col">Yield%</th>
             <th scope="col">Owner</th>
             <th scope="col">Owner state</th>
             <th scope="col">Mailing</th>
@@ -175,6 +176,37 @@
       <div class="empty" id="o-empty" hidden>No off-market leads loaded yet — run the county refresh.</div>
     </div>
     <div class="foot" id="o-foot"></div>
+
+    <h2 style="margin-top: var(--s6);">Pre-Foreclosures</h2>
+    <section class="a-card" style="margin: var(--s4) 0;">
+      <div class="filters">
+        <div class="f"><label for="fc-county">County</label><select id="fc-county"><option value="">All counties</option></select></div>
+        <div class="f"><label for="fc-q">Search</label><input id="fc-q" placeholder="address / owner" /></div>
+        <div class="actions">
+          <button class="a-btn primary" id="fc-apply">Apply</button>
+          <a class="a-btn" id="fc-export" href="/api/foreclosures.csv" download>Export CSV</a>
+        </div>
+      </div>
+      <p class="foot" style="margin-top: var(--s2);">County Public Trustee Notices of Election &amp; Demand (weekly NED filings) — the distress signal. Free public records.</p>
+    </section>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Property</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Amount owed</th>
+            <th scope="col">Orig. note</th>
+            <th scope="col">NED date</th>
+            <th scope="col">Case #</th>
+            <th scope="col">County</th>
+          </tr>
+        </thead>
+        <tbody id="fc-rows"></tbody>
+      </table>
+      <div class="empty" id="fc-empty" hidden>No pre-foreclosures loaded yet — run the NED ingester.</div>
+    </div>
+    <div class="foot" id="fc-foot"></div>
 
     <footer class="colophon">
       <span>Cloudflare Worker + D1</span>
@@ -416,6 +448,7 @@
           <tr>
             <td class="addr">${esc(r.situs_address)}${r.situs_city ? ", " + esc(r.situs_city) : ""}</td>
             <td class="price">${money(r.actual_value)}</td>
+            <td>${r.gross_yield_pct != null ? r.gross_yield_pct.toFixed(1) + "%" : "—"}</td>
             <td class="addr">${dash(r.owner_name)}</td>
             <td><span class="flag">${dash(r.owner_state)}</span></td>
             <td>${dash(r.owner_mailing)}${r.owner_city ? ", " + esc(r.owner_city) : ""}</td>
@@ -436,10 +469,44 @@
     $("#o-county").addEventListener("change", loadOffmarket);
     ["o-q","o-state"].forEach((id) => $("#"+id).addEventListener("keydown", (e) => { if (e.key === "Enter") loadOffmarket(); }));
 
+    /* ---------- pre-foreclosures ---------- */
+    async function loadForeclosures() {
+      const p = new URLSearchParams();
+      const county = $("#fc-county").value, q = $("#fc-q").value.trim();
+      if (county) p.set("county", county);
+      if (q) p.set("q", q);
+      p.set("limit", "500");
+      $("#fc-export").href = "/api/foreclosures.csv" + (county ? "?county=" + encodeURIComponent(county) : "");
+      try {
+        const data = await getJSON("/api/foreclosures?" + p);
+        const rows = data.foreclosures || [];
+        $("#fc-empty").hidden = rows.length > 0;
+        $("#fc-rows").innerHTML = rows.map((r) => `
+          <tr>
+            <td class="addr">${dash(r.property_address)}</td>
+            <td class="addr">${dash(r.owner_name)}</td>
+            <td class="price">${money(r.current_amount)}</td>
+            <td>${money(r.original_note)}</td>
+            <td>${dash(r.ned_date)}</td>
+            <td>${dash(r.fc_number)}${r.status ? ' <span class="flag">' + esc(r.status) + '</span>' : ''}</td>
+            <td>${dash(r.county)}</td>
+          </tr>`).join("");
+        $("#fc-foot").textContent = `Showing ${rows.length} pre-foreclosure(s), newest NED first.`;
+        const sel = $("#fc-county"), cur = sel.value;
+        const counties = [...new Set(rows.map((r) => r.county))];
+        if (!cur && counties.length) sel.innerHTML = '<option value="">All counties</option>' +
+          counties.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+      } catch (e) { console.error("foreclosures:", e); }
+    }
+    $("#fc-apply").addEventListener("click", loadForeclosures);
+    $("#fc-county").addEventListener("change", loadForeclosures);
+    $("#fc-q").addEventListener("keydown", (e) => { if (e.key === "Enter") loadForeclosures(); });
+
     (async () => {
       try { await loadStats(); } catch (e) { console.error(e); }
       await loadRows();
       await loadOffmarket();
+      await loadForeclosures();
     })();
   </script>
 </body>
