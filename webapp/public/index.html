@@ -142,6 +142,40 @@
     </div>
     <div class="foot" id="foot"></div>
 
+    <h2 style="margin-top: var(--s6);">Off-Market Leads</h2>
+    <section class="a-card" style="margin: var(--s4) 0;">
+      <div class="filters">
+        <div class="f"><label for="o-county">County</label><select id="o-county"><option value="">All counties</option></select></div>
+        <div class="f"><label for="o-q">Search</label><input id="o-q" placeholder="address / owner" /></div>
+        <div class="f"><label for="o-min">Min value</label><input id="o-min" type="number" placeholder="800000" /></div>
+        <div class="f"><label for="o-state">Owner state</label><input id="o-state" placeholder="e.g. CA" maxlength="2" /></div>
+        <div class="actions">
+          <button class="a-btn primary" id="o-apply">Apply</button>
+          <a class="a-btn" id="o-export" href="/api/offmarket.csv" download>Export CSV</a>
+        </div>
+      </div>
+      <p class="foot" style="margin-top: var(--s2);">County assessor records: $800k+ actual value, owner mailing address outside Colorado. Free public data, refreshed weekly.</p>
+    </section>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Property</th>
+            <th scope="col">Value</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Owner state</th>
+            <th scope="col">Mailing</th>
+            <th scope="col">Last sale</th>
+            <th scope="col">Built</th>
+            <th scope="col">County</th>
+          </tr>
+        </thead>
+        <tbody id="o-rows"></tbody>
+      </table>
+      <div class="empty" id="o-empty" hidden>No off-market leads loaded yet — run the county refresh.</div>
+    </div>
+    <div class="foot" id="o-foot"></div>
+
     <footer class="colophon">
       <span>Cloudflare Worker + D1</span>
       <span>Anderson House Style</span>
@@ -366,9 +400,46 @@
     });
     $("#f-q").addEventListener("keydown", (e) => { if (e.key === "Enter") loadRows(); });
 
+    /* ---------- off-market leads ---------- */
+    async function loadOffmarket() {
+      const p = new URLSearchParams();
+      const vals = { county: $("#o-county").value, q: $("#o-q").value.trim(),
+                     min_value: $("#o-min").value, owner_state: $("#o-state").value.trim() };
+      for (const [k, v] of Object.entries(vals)) if (v) p.set(k, v);
+      p.set("limit", "500");
+      $("#o-export").href = "/api/offmarket.csv?" + p;
+      try {
+        const data = await getJSON("/api/offmarket?" + p);
+        const rows = data.leads || [];
+        $("#o-empty").hidden = rows.length > 0;
+        $("#o-rows").innerHTML = rows.map((r) => `
+          <tr>
+            <td class="addr">${esc(r.situs_address)}${r.situs_city ? ", " + esc(r.situs_city) : ""}</td>
+            <td class="price">${money(r.actual_value)}</td>
+            <td class="addr">${dash(r.owner_name)}</td>
+            <td><span class="flag">${dash(r.owner_state)}</span></td>
+            <td>${dash(r.owner_mailing)}${r.owner_city ? ", " + esc(r.owner_city) : ""}</td>
+            <td>${r.last_sale_date ? esc(r.last_sale_date) + (r.last_sale_price ? " · " + money(r.last_sale_price) : "") : "—"}</td>
+            <td>${r.year_built ?? "—"}</td>
+            <td>${dash(r.county)}</td>
+          </tr>`).join("");
+        $("#o-foot").textContent = `Showing ${rows.length} off-market lead(s), sorted by value.`;
+        const sel = $("#o-county"), cur = sel.value;
+        const counties = [...new Set(rows.map((r) => r.county))];
+        if (!cur && counties.length) {
+          sel.innerHTML = '<option value="">All counties</option>' +
+            counties.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+        }
+      } catch (e) { console.error("offmarket:", e); }
+    }
+    $("#o-apply").addEventListener("click", loadOffmarket);
+    $("#o-county").addEventListener("change", loadOffmarket);
+    ["o-q","o-state"].forEach((id) => $("#"+id).addEventListener("keydown", (e) => { if (e.key === "Enter") loadOffmarket(); }));
+
     (async () => {
       try { await loadStats(); } catch (e) { console.error(e); }
       await loadRows();
+      await loadOffmarket();
     })();
   </script>
 </body>

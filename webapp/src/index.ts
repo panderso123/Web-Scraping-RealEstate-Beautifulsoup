@@ -255,6 +255,128 @@ function authed(request: Request, env: Env): boolean {
   return !!env.INGEST_TOKEN && token === env.INGEST_TOKEN;
 }
 
+/* ---------------- county off-market layer (free public ArcGIS REST) ---------------- */
+
+interface OffmarketRow {
+  situs_address: string | null; situs_city: string | null; situs_zip: string | null;
+  owner_name: string | null; owner_mailing: string | null; owner_city: string | null;
+  owner_state: string | null; owner_zip: string | null;
+  actual_value: number | null; last_sale_date: string | null; last_sale_price: number | null;
+  year_built: number | null; prop_class: string | null;
+}
+
+const epochToISO = (v: unknown) =>
+  typeof v === "number" && v > 0 ? new Date(v).toISOString().slice(0, 10) : null;
+/** Jefferson stores sale dates as "MMDDYYYY" strings. */
+const mmddyyyyToISO = (v: unknown) => {
+  const s = String(v ?? "");
+  return /^\d{8}$/.test(s) ? `${s.slice(4)}-${s.slice(0, 2)}-${s.slice(2, 4)}` : null;
+};
+const joinAddr = (...parts: Array<unknown>) => {
+  const s = parts.filter((p) => p != null && String(p).trim()).map((p) => String(p).trim()).join(" ");
+  return s || null;
+};
+
+/** Lead definition: county actual value >= $800k AND owner mailing state outside CO. */
+const COUNTY_SOURCES: Record<string, {
+  url: string; where: string; outFields: string; map: (a: any) => OffmarketRow;
+}> = {
+  Denver: {
+    url: "https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/ODC_PROP_PARCELS_A/FeatureServer/245/query",
+    where: "APPRAISED_TOTAL_VALUE >= 800000 AND OWNER_STATE <> 'CO' AND OWNER_STATE IS NOT NULL",
+    outFields: "OWNER_NAME,OWNER_ADDRESS_LINE1,OWNER_CITY,OWNER_STATE,OWNER_ZIP,SITUS_ADDRESS_LINE1,SITUS_CITY,SITUS_ZIP,APPRAISED_TOTAL_VALUE,SALE_DATE,SALE_PRICE,RES_ORIG_YEAR_BUILT,D_CLASS_CN",
+    map: (a) => ({
+      situs_address: a.SITUS_ADDRESS_LINE1 ?? null, situs_city: a.SITUS_CITY ?? null, situs_zip: a.SITUS_ZIP ?? null,
+      owner_name: a.OWNER_NAME ?? null, owner_mailing: a.OWNER_ADDRESS_LINE1 ?? null,
+      owner_city: a.OWNER_CITY ?? null, owner_state: a.OWNER_STATE ?? null, owner_zip: a.OWNER_ZIP ?? null,
+      actual_value: a.APPRAISED_TOTAL_VALUE ?? null,
+      last_sale_date: epochToISO(a.SALE_DATE), last_sale_price: a.SALE_PRICE ?? null,
+      year_built: a.RES_ORIG_YEAR_BUILT ?? null, prop_class: a.D_CLASS_CN ?? null,
+    }),
+  },
+  Jefferson: {
+    url: "https://gisportal.jeffco.us/server2/rest/services/Parcel/FeatureServer/20/query",
+    where: "TOTACTVAL >= 800000 AND MAILSTENAM <> 'CO' AND MAILSTENAM IS NOT NULL",
+    outFields: "OWNNAM,MAILSTRNBR,MAILSTRDIR,MAILSTRNAM,MAILSTRTYP,MAILSTRUNT,MAILCTYNAM,MAILSTENAM,MAILZIP5,PRPADDRESS,PRPCTYNAM,PRPZIP5,TOTACTVAL,SLSDT,SLSAMT,STTYRBLT,STTTYPUSE",
+    map: (a) => ({
+      situs_address: a.PRPADDRESS ?? null, situs_city: a.PRPCTYNAM ?? null, situs_zip: a.PRPZIP5 != null ? String(a.PRPZIP5) : null,
+      owner_name: a.OWNNAM ?? null,
+      owner_mailing: joinAddr(a.MAILSTRNBR, a.MAILSTRDIR, a.MAILSTRNAM, a.MAILSTRTYP, a.MAILSTRUNT),
+      owner_city: a.MAILCTYNAM ?? null, owner_state: a.MAILSTENAM ?? null, owner_zip: a.MAILZIP5 != null ? String(a.MAILZIP5) : null,
+      actual_value: a.TOTACTVAL ?? null,
+      last_sale_date: mmddyyyyToISO(a.SLSDT),
+      last_sale_price: a.SLSAMT != null ? Math.round(Number(a.SLSAMT)) : null,
+      year_built: a.STTYRBLT ?? null, prop_class: a.STTTYPUSE != null ? String(a.STTTYPUSE) : null,
+    }),
+  },
+};
+
+/** Page through an ArcGIS query (2000/page) and return mapped rows. */
+async function fetchCountyLeads(county: string): Promise<OffmarketRow[]> {
+  const src = COUNTY_SOURCES[county];
+  if (!src) throw new Error(`Unknown county: ${county}`);
+  const rows: OffmarketRow[] = [];
+  for (let offset = 0; offset < 40000; offset += 2000) {
+    const qs = new URLSearchParams({
+      where: src.where, outFields: src.outFields, returnGeometry: "false",
+      orderByFields: "OBJECTID", resultOffset: String(offset), resultRecordCount: "2000", f: "json",
+    });
+    const resp = await fetch(`${src.url}?${qs}`, { headers: { "user-agent": "realestate-dashboard/1.0" } });
+    if (!resp.ok) throw new Error(`${county} ArcGIS ${resp.status}`);
+    const data: any = await resp.json();
+    if (data.error) throw new Error(`${county} ArcGIS: ${JSON.stringify(data.error).slice(0, 150)}`);
+    const feats: any[] = data.features ?? [];
+    rows.push(...feats.map((f) => src.map(f.attributes)));
+    if (!data.exceededTransferLimit && feats.length < 2000) break;
+  }
+  return rows.filter((r) => r.situs_address);
+}
+
+async function upsertOffmarket(env: Env, county: string, rows: OffmarketRow[]): Promise<number> {
+  const stmt = env.DB.prepare(
+    `INSERT INTO offmarket (county, situs_address, situs_city, situs_zip, owner_name, owner_mailing,
+       owner_city, owner_state, owner_zip, actual_value, last_sale_date, last_sale_price,
+       year_built, prop_class, fetched_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(county, situs_address, situs_city) DO UPDATE SET
+       owner_name=excluded.owner_name, owner_mailing=excluded.owner_mailing,
+       owner_city=excluded.owner_city, owner_state=excluded.owner_state, owner_zip=excluded.owner_zip,
+       actual_value=excluded.actual_value, last_sale_date=excluded.last_sale_date,
+       last_sale_price=excluded.last_sale_price, year_built=excluded.year_built,
+       prop_class=excluded.prop_class, fetched_at=excluded.fetched_at`
+  );
+  let n = 0;
+  // Chunk: D1 batch has statement-count/size limits; 400 works comfortably.
+  for (let i = 0; i < rows.length; i += 400) {
+    const chunk = rows.slice(i, i + 400).map((r) => stmt.bind(
+      county, r.situs_address, r.situs_city, r.situs_zip, r.owner_name, r.owner_mailing,
+      r.owner_city, r.owner_state, r.owner_zip, r.actual_value, r.last_sale_date,
+      r.last_sale_price, r.year_built, r.prop_class
+    ));
+    await env.DB.batch(chunk);
+    n += chunk.length;
+  }
+  return n;
+}
+
+function buildOffmarketQuery(p: URLSearchParams) {
+  const where: string[] = [];
+  const binds: unknown[] = [];
+  const county = p.get("county"); if (county) { where.push("county = ?"); binds.push(county); }
+  const state = p.get("owner_state"); if (state) { where.push("owner_state = ?"); binds.push(state.toUpperCase()); }
+  const q = p.get("q"); if (q) { where.push("(situs_address LIKE ? OR owner_name LIKE ?)"); binds.push(`%${q}%`, `%${q}%`); }
+  const minv = p.get("min_value"); if (minv) { where.push("actual_value >= ?"); binds.push(parseInt(minv, 10)); }
+  const maxv = p.get("max_value"); if (maxv) { where.push("actual_value <= ?"); binds.push(parseInt(maxv, 10)); }
+  const limit = Math.min(parseInt(p.get("limit") || "200", 10) || 200, 1000);
+  const sortCol = ({ value: "actual_value", sale: "last_sale_date", year: "year_built" } as Record<string, string>)[p.get("sort") || ""] || "actual_value";
+  const dir = (p.get("dir") || "desc").toLowerCase() === "asc" ? "ASC" : "DESC";
+  const sql = `SELECT * FROM offmarket
+    ${where.length ? "WHERE " + where.join(" AND ") : ""}
+    ORDER BY ${sortCol} ${dir} NULLS LAST LIMIT ?`;
+  binds.push(limit);
+  return { sql, binds };
+}
+
 /* ---------------- listing query (shared by /api/listings and export) ---------------- */
 
 const LISTING_COLS =
@@ -350,6 +472,43 @@ export default {
         return json({ ok, ...result }, ok ? 200 : 207);
       }
 
+      if (pathname === "/api/offmarket" && request.method === "GET") {
+        const { sql, binds } = buildOffmarketQuery(url.searchParams);
+        const { results } = await env.DB.prepare(sql).bind(...binds).all();
+        return json({ count: results.length, leads: results });
+      }
+
+      if (pathname === "/api/offmarket.csv" && request.method === "GET") {
+        const { sql, binds } = buildOffmarketQuery(url.searchParams);
+        const { results } = await env.DB.prepare(sql).bind(...binds).all();
+        const cols = ["situs_address", "situs_city", "situs_zip", "county", "actual_value", "owner_name",
+                      "owner_mailing", "owner_city", "owner_state", "owner_zip",
+                      "last_sale_date", "last_sale_price", "year_built", "prop_class"];
+        const escCsv = (v: unknown) => v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+        const csv = [cols.join(","), ...results.map((r: any) => cols.map((c) => escCsv(r[c])).join(","))].join("\n");
+        return new Response(csv, {
+          headers: {
+            "content-type": "text/csv; charset=utf-8",
+            "content-disposition": `attachment; filename="offmarket-leads-${monthKey()}.csv"`,
+            "access-control-allow-origin": "*",
+          },
+        });
+      }
+
+      if (pathname === "/api/county/refresh" && request.method === "POST") {
+        if (!authed(request, env)) return json({ error: "Unauthorized" }, 401);
+        const one = url.searchParams.get("county");
+        const counties = one ? [one] : Object.keys(COUNTY_SOURCES);
+        const refreshed: Record<string, number> = {};
+        const errors: Record<string, string> = {};
+        for (const c of counties) {
+          try { refreshed[c] = await upsertOffmarket(env, c, await fetchCountyLeads(c)); }
+          catch (e: any) { errors[c] = String(e?.message || e); }
+        }
+        const ok = Object.keys(errors).length === 0;
+        return json({ ok, refreshed, errors }, ok ? 200 : 207);
+      }
+
       if (pathname === "/api/enrich" && request.method === "POST") {
         if (!authed(request, env)) return json({ error: "Unauthorized" }, 401);
         const body = (await request.json().catch(() => ({}))) as { id?: number; mock?: EnrichSource };
@@ -382,7 +541,17 @@ export default {
     return json({ error: "Not found" }, 404);
   },
 
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (event.cron === "0 14 * * 1") {
+      // Weekly county off-market refresh (free public data, no RentCast calls).
+      ctx.waitUntil((async () => {
+        for (const c of Object.keys(COUNTY_SOURCES)) {
+          try { console.log(`county cron ${c}:`, await upsertOffmarket(env, c, await fetchCountyLeads(c))); }
+          catch (e: any) { console.log(`county cron ${c} ERROR:`, String(e?.message || e)); }
+        }
+      })());
+      return;
+    }
     const cities = parseCities(env.CITIES);
     if (!cities.length || !env.RENTCAST_API_KEY) return;
     ctx.waitUntil(refreshCities(env, cities).then((r) => console.log("cron refresh:", JSON.stringify(r))));

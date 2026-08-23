@@ -33,8 +33,9 @@
     "RENTCAST_MONTHLY_CAP": "1000"
   },
 
-  // Daily at 13:00 UTC (07:00 Denver).
-  "triggers": { "crons": ["0 13 * * *"] },
+  // Daily 13:00 UTC (07:00 Denver) = RentCast listings refresh.
+  // Monday 14:00 UTC = county off-market lead refresh (free public ArcGIS data).
+  "triggers": { "crons": ["0 13 * * *", "0 14 * * 1"] },
 
   "observability": { "enabled": true }
 }

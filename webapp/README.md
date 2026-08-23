@@ -134,3 +134,15 @@ the style, re-copy the file; do not edit the vendored copy.
 cd webapp
 wrangler dev            # uses a local D1; seed with: wrangler d1 execute realestate --local --file=schema.sql
 ```
+
+## County off-market layer (free public data)
+
+`/api/county/refresh` (Bearer) pulls high-value absentee leads straight from
+county assessor ArcGIS REST APIs (no scraping, no cost): actual value >= $800k
+with owner mailing state outside CO. Live adapters: Denver (~4.5k leads),
+Jefferson (~2.6k). Weekly Monday cron refreshes automatically. Query via
+`/api/offmarket` (county, q, min_value/max_value, owner_state, sort=value|sale|year)
+or export `/api/offmarket.csv`. Recon of all 7 metro counties (verified sources
+for assessor bulk, foreclosure/NED lists, tax-lien lists) lives in the session
+notes; Adams/Douglas/Boulder/Arapahoe/Broomfield adapters + NED PDF parsing are
+the natural next stage.
