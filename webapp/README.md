@@ -139,8 +139,9 @@ wrangler dev            # uses a local D1; seed with: wrangler d1 execute reales
 
 `/api/county/refresh` (Bearer) pulls high-value absentee leads straight from
 county assessor ArcGIS REST APIs (no scraping, no cost): actual value >= $800k
-with owner mailing state outside CO. Live adapters: Denver (~4.5k leads),
-Jefferson (~2.6k). Weekly Monday cron refreshes automatically. Query via
+with owner mailing state outside CO. Live adapters (all 7 metro counties): Denver, Jefferson, Arapahoe, Douglas,
+Broomfield, Adams (ArcGIS REST, server-side in the Worker) + Boulder (nightly
+CSVs via ingest_county_boulder.py -> /api/offmarket/ingest). ~15.5k leads total. Weekly Monday cron refreshes automatically. Query via
 `/api/offmarket` (county, q, min_value/max_value, owner_state, sort=value|sale|year)
 or export `/api/offmarket.csv`. Recon of all 7 metro counties (verified sources
 for assessor bulk, foreclosure/NED lists, tax-lien lists) lives in the session

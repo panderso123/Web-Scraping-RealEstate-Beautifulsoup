@@ -309,10 +309,94 @@ const COUNTY_SOURCES: Record<string, {
       year_built: a.STTYRBLT ?? null, prop_class: a.STTTYPUSE != null ? String(a.STTTYPUSE) : null,
     }),
   },
+  Arapahoe: {
+    url: "https://gis.arapahoegov.com/arcgis/rest/services/CountyFeatureService/FeatureServer/14/query",
+    where: "Appr_Value >= 800000 AND Owner_State <> 'CO' AND Owner_State IS NOT NULL AND Owner_State <> ''",
+    outFields: "Owner,Owner_Mail_Address,Owner_City,Owner_State,Owner_Zip,Situs_Address,City,Zip,Appr_Value,Sale_Date,Price,PUC",
+    map: (a) => ({
+      situs_address: a.Situs_Address ?? null, situs_city: a.City ?? null, situs_zip: a.Zip != null ? String(a.Zip) : null,
+      owner_name: a.Owner ?? null, owner_mailing: a.Owner_Mail_Address ?? null,
+      owner_city: a.Owner_City ?? null, owner_state: a.Owner_State ?? null, owner_zip: a.Owner_Zip != null ? String(a.Owner_Zip) : null,
+      actual_value: a.Appr_Value ?? null,
+      last_sale_date: epochToISO(a.Sale_Date), last_sale_price: a.Price != null ? Math.round(Number(a.Price)) : null,
+      year_built: null, prop_class: a.PUC != null ? String(a.PUC) : null,
+    }),
+  },
+  Douglas: {
+    url: "https://services.arcgis.com/seTexOicoRXDvRsJ/ArcGIS/rest/services/Parcels_Enriched/FeatureServer/0/query",
+    where: "TOTAL_ACTUAL_VALUE >= 800000 AND MAILING_STATE <> 'CO' AND MAILING_STATE IS NOT NULL AND MAILING_STATE <> ''",
+    outFields: "OWNER_NAME,MAILING_ADDRESS_LINE_1,MAILING_ADDRESS_LINE_2,MAILING_CITY_NAME,MAILING_STATE,MAILING_ZIP_CODE,LOCATION_ADDRESS,CITY_NAME,LOCATION_ZIP_CODE,TOTAL_ACTUAL_VALUE,ACCOUNT_TYPE_CODE",
+    map: (a) => ({
+      situs_address: a.LOCATION_ADDRESS ?? null, situs_city: a.CITY_NAME ?? null, situs_zip: a.LOCATION_ZIP_CODE != null ? String(a.LOCATION_ZIP_CODE) : null,
+      owner_name: a.OWNER_NAME ?? null,
+      owner_mailing: joinAddr(a.MAILING_ADDRESS_LINE_1, a.MAILING_ADDRESS_LINE_2),
+      owner_city: a.MAILING_CITY_NAME ?? null, owner_state: a.MAILING_STATE ?? null, owner_zip: a.MAILING_ZIP_CODE != null ? String(a.MAILING_ZIP_CODE) : null,
+      actual_value: a.TOTAL_ACTUAL_VALUE ?? null,
+      last_sale_date: null, last_sale_price: null,
+      year_built: null, prop_class: a.ACCOUNT_TYPE_CODE != null ? String(a.ACCOUNT_TYPE_CODE) : null,
+    }),
+  },
+  Broomfield: {
+    url: "https://services1.arcgis.com/vXSRPZbyyOmH9pek/arcgis/rest/services/Parcels/FeatureServer/0/query",
+    where: "FINALACTUALVALUE >= 800000 AND OWNERADDRESS_STATE <> 'CO' AND OWNERADDRESS_STATE IS NOT NULL AND OWNERADDRESS_STATE <> ''",
+    outFields: "OWNERNAME,OWNERADDRESS_ADDRESS1,OWNERADDRESS_ADDRESS2,OWNERADDRESS_CITY,OWNERADDRESS_STATE,OWNERADDRESS_ZIP,SITUS_FULL_ADDRESS,FINALACTUALVALUE,SALEDATE,SALEPRICE,ACTUALYEARBUILT,PROPERTYUSE",
+    map: (a) => ({
+      situs_address: a.SITUS_FULL_ADDRESS ?? null, situs_city: "Broomfield", situs_zip: null,
+      owner_name: a.OWNERNAME ?? null,
+      owner_mailing: joinAddr(a.OWNERADDRESS_ADDRESS1, a.OWNERADDRESS_ADDRESS2),
+      owner_city: a.OWNERADDRESS_CITY ?? null, owner_state: a.OWNERADDRESS_STATE ?? null, owner_zip: a.OWNERADDRESS_ZIP != null ? String(a.OWNERADDRESS_ZIP) : null,
+      actual_value: a.FINALACTUALVALUE ?? null,
+      last_sale_date: epochToISO(a.SALEDATE), last_sale_price: a.SALEPRICE != null ? Math.round(Number(a.SALEPRICE)) : null,
+      year_built: a.ACTUALYEARBUILT ?? null, prop_class: a.PROPERTYUSE != null ? String(a.PROPERTYUSE) : null,
+    }),
+  },
 };
+
+/** Adams stores value and owner in separate services; join by pin via two scans. */
+async function fetchAdamsLeads(): Promise<OffmarketRow[]> {
+  const UA = { "user-agent": "realestate-dashboard/1.0" };
+  const base = "https://services3.arcgis.com/4PNQOtAivErR7nbT/arcgis/rest/services";
+  const page = async (url: string, where: string, outFields: string, order: string) => {
+    const out: any[] = [];
+    for (let off = 0; off < 60000; off += 2000) {
+      const qs = new URLSearchParams({ where, outFields, returnGeometry: "false", orderByFields: order, resultOffset: String(off), resultRecordCount: "2000", f: "json" });
+      const r = await fetch(`${url}?${qs}`, { headers: UA });
+      if (!r.ok) throw new Error(`Adams ${r.status}`);
+      const d: any = await r.json();
+      if (d.error) throw new Error(`Adams: ${JSON.stringify(d.error).slice(0, 120)}`);
+      const f = d.features ?? [];
+      out.push(...f.map((x: any) => x.attributes));
+      if (!d.exceededTransferLimit && f.length < 2000) break;
+    }
+    return out;
+  };
+  // Value map: pin -> {value, class}
+  const values = await page(`${base}/Property_Values/FeatureServer/0/query`,
+    "acttotalval >= 800000", "pin,acttotalval,accttype", "pin");
+  const valMap = new Map<string, { v: number; c: string | null }>();
+  for (const a of values) { const pin = a.pin ?? a.PIN; if (pin != null) valMap.set(String(pin), { v: a.acttotalval, c: a.accttype ?? null }); }
+  // Absentee owners
+  const parcels = await page(`${base}/Parcels/FeatureServer/0/query`,
+    "ownerstate NOT IN ('CO') AND ownerstate IS NOT NULL AND ownerstate <> ' ' AND ownerstate <> ''",
+    "pin,ownernamefull,owneraddress,ownercity,ownerstate,ownerzip,concataddr1,loccity", "pin");
+  const rows: OffmarketRow[] = [];
+  for (const a of parcels) {
+    const pin = a.PIN ?? a.pin;
+    const hit = pin != null ? valMap.get(String(pin)) : undefined;
+    if (!hit) continue;
+    rows.push({
+      situs_address: a.concataddr1 ?? null, situs_city: a.loccity ?? null, situs_zip: null,
+      owner_name: a.ownernamefull ?? null, owner_mailing: a.owneraddress ?? null,
+      owner_city: a.ownercity ?? null, owner_state: a.ownerstate ?? null, owner_zip: a.ownerzip != null ? String(a.ownerzip) : null,
+      actual_value: hit.v, last_sale_date: null, last_sale_price: null, year_built: null, prop_class: hit.c,
+    });
+  }
+  return rows.filter((r) => r.situs_address);
+}
 
 /** Page through an ArcGIS query (2000/page) and return mapped rows. */
 async function fetchCountyLeads(county: string): Promise<OffmarketRow[]> {
+  if (county === "Adams") return fetchAdamsLeads();
   const src = COUNTY_SOURCES[county];
   if (!src) throw new Error(`Unknown county: ${county}`);
   const rows: OffmarketRow[] = [];
@@ -496,10 +580,23 @@ export default {
         });
       }
 
+      if (pathname === "/api/offmarket/ingest" && request.method === "POST") {
+        // Bulk-file counties (e.g. Boulder) push pre-built rows here from a
+        // Python ingester, since their data isn't a queryable ArcGIS layer.
+        if (!authed(request, env)) return json({ error: "Unauthorized" }, 401);
+        const body = (await request.json().catch(() => ({}))) as { county?: string; rows?: OffmarketRow[] };
+        const county = (String(body.county || "")).trim();
+        const rows = Array.isArray(body.rows) ? body.rows : [];
+        if (!county) return json({ error: "Missing 'county'" }, 400);
+        if (!rows.length) return json({ error: "No rows" }, 400);
+        const n = await upsertOffmarket(env, county, rows);
+        return json({ ok: true, county, ingested: n });
+      }
+
       if (pathname === "/api/county/refresh" && request.method === "POST") {
         if (!authed(request, env)) return json({ error: "Unauthorized" }, 401);
         const one = url.searchParams.get("county");
-        const counties = one ? [one] : Object.keys(COUNTY_SOURCES);
+        const counties = one ? [one] : [...Object.keys(COUNTY_SOURCES), "Adams"];
         const refreshed: Record<string, number> = {};
         const errors: Record<string, string> = {};
         for (const c of counties) {
@@ -631,7 +728,7 @@ export default {
     if (event.cron === "0 14 * * 1") {
       // Weekly county off-market refresh (free public data, no RentCast calls).
       ctx.waitUntil((async () => {
-        for (const c of Object.keys(COUNTY_SOURCES)) {
+        for (const c of [...Object.keys(COUNTY_SOURCES), "Adams"]) {
           try { console.log(`county cron ${c}:`, await upsertOffmarket(env, c, await fetchCountyLeads(c))); }
           catch (e: any) { console.log(`county cron ${c} ERROR:`, String(e?.message || e)); }
         }
