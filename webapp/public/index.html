@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Real Estate Listings</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>" />
+  <!-- ANDERSON HOUSE STYLE — consumed exactly as anderson.css documents:
+       hosted single source of truth at vault.creativeconquests.online. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Bitter:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="https://vault.creativeconquests.online/assets/anderson.css">
+  <style>
+    /* Dashboard-specific layout on top of the house system. Uses only house
+       tokens (--bg/--surface/--line/--ink/--accent/…, Fibonacci --s*, type --t*)
+       so both themes come free and future anderson.css evolution flows in. */
+    .wrap { max-width: 1240px; margin: 0 auto; padding: var(--s4) var(--s4) var(--s6); }
+    .mast-inner { max-width: 1240px; margin: 0 auto; padding: var(--s3) var(--s4); display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; }
+    .mast-inner h1 { font-size: var(--t24); margin: 0; }
+    #stale { margin-left: auto; font-family: var(--mono); font-size: var(--t12); color: var(--warn); }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--s3); margin: var(--s4) 0; }
+    .stat { border: 1px solid var(--line); border-top: 2px solid var(--ink); border-radius: 0 0 4px 4px; background: var(--surface); padding: var(--s3) var(--s4); }
+    .stat .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--t24); font-weight: 600; margin-top: var(--s1); }
+
+    .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s3); align-items: end; margin-bottom: var(--s4); }
+    .f label { display: block; font-family: var(--disp); font-size: var(--t9); font-weight: 600; letter-spacing: .19em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--s1); }
+    .f input, .f select { width: 100%; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); font-family: var(--serif); font-size: var(--t15); }
+    .f input:focus, .f select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .actions { display: flex; gap: var(--s2); }
+
+    .table-wrap { border: 1px solid var(--line); border-top: 2px solid var(--ink); border-radius: 0 0 4px 4px; background: var(--surface); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: var(--t15); }
+    th, td { padding: var(--s2) var(--s3); text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
+    thead th { position: sticky; top: 0; background: var(--surface-2); font-family: var(--disp); font-size: var(--t12); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); border-bottom: 3px double var(--ink); user-select: none; }
+    th[data-sort] { cursor: pointer; }
+    th[data-sort]:hover { color: var(--accent); }
+    th .arrow { font-size: 9px; }
+    tbody tr:hover { background: var(--surface-2); }
+    td { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--t12); }
+    td.addr { font-family: var(--serif); font-size: var(--t15); white-space: normal; min-width: 220px; }
+    td.price { color: var(--accent); font-weight: 600; }
+    .empty, .loading, .errbox { padding: var(--s5); text-align: center; color: var(--muted); font-family: var(--serif); }
+    .errbox { color: var(--danger); }
+    .foot { font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: var(--s3); }
+    .colophon { margin-top: var(--s5); padding-top: var(--s3); border-top: 3px double var(--line); font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; gap: var(--s4); flex-wrap: wrap; }
+    @media (prefers-reduced-motion: no-preference) { .loading { animation: pulse 1.2s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .45; } } }
+  </style>
+</head>
+<body class="anderson">
+  <nav class="a-mast">
+    <div class="mast-inner">
+      <h1>Real Estate Listings</h1>
+      <span class="eyebrow">Licensed RentCast data &middot; refreshed daily</span>
+      <span id="stale" hidden></span>
+    </div>
+  </nav>
+
+  <div class="a-band" role="img" aria-label="The Study — house art, golden-ratio band crop"></div>
+
+  <main class="wrap">
+    <section class="stats" id="stats" aria-label="Summary statistics"></section>
+
+    <section class="a-card" style="margin-bottom: var(--s4);">
+      <div class="filters">
+        <div class="f"><label for="f-city">City</label><select id="f-city"><option value="">All cities</option></select></div>
+        <div class="f"><label for="f-type">Type</label><select id="f-type"><option value="">All types</option></select></div>
+        <div class="f"><label for="f-q">Search</label><input id="f-q" placeholder="address / agent" /></div>
+        <div class="f"><label for="f-min">Min price</label><input id="f-min" type="number" placeholder="0" /></div>
+        <div class="f"><label for="f-max">Max price</label><input id="f-max" type="number" placeholder="Any" /></div>
+        <div class="f"><label for="f-beds">Min beds</label><input id="f-beds" type="number" placeholder="0" /></div>
+        <div class="actions">
+          <button class="a-btn primary" id="apply">Apply</button>
+          <button class="a-btn" id="reset">Reset</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="scraped">Address <span class="arrow" id="a-scraped"></span></th>
+            <th>Type</th>
+            <th>Status</th>
+            <th data-sort="price">Price <span class="arrow" id="a-price"></span></th>
+            <th data-sort="ppsf">$/SqFt <span class="arrow" id="a-ppsf"></span></th>
+            <th>Beds</th>
+            <th>Baths</th>
+            <th>SqFt</th>
+            <th data-sort="dom">DOM <span class="arrow" id="a-dom"></span></th>
+            <th>Agent</th>
+            <th>City</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="loading" id="loading">Loading listings&hellip;</div>
+      <div class="empty" id="empty" hidden>No listings match. Ingest some data, then refresh.</div>
+      <div class="errbox" id="err" hidden></div>
+    </div>
+    <div class="foot" id="foot"></div>
+
+    <footer class="colophon">
+      <span>Cloudflare Worker + D1</span>
+      <span>Anderson House Style</span>
+      <span>Data: RentCast (licensed)</span>
+    </footer>
+  </main>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    let sort = "scraped", dir = "desc";
+    const fmtPrice = (n, t) => n != null ? "$" + Number(n).toLocaleString() : (t && t !== "Not specified" ? t : "—");
+    const esc = (s) => (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    const dash = (v) => (v == null || v === "NoV" || v === "Not specified") ? "—" : esc(v);
+
+    async function getJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
+      return r.json();
+    }
+
+    async function loadStats() {
+      const s = await getJSON("/api/stats");
+      const money = (n) => n ? "$" + Math.round(n).toLocaleString() : "—";
+      $("#stats").innerHTML = [
+        ["Total listings", s.total],
+        ["Cities", (s.cities || []).length],
+        ["Avg price", money(s.price?.avg)],
+        ["Avg $/sqft", money(s.price?.avg_ppsf)],
+        ["Last updated", s.last_ingest ? new Date(s.last_ingest + "Z").toLocaleDateString() : "never"],
+      ].map(([k, v]) => `<div class="stat"><div class="eyebrow">${k}</div><div class="v">${v}</div></div>`).join("");
+
+      if (s.last_ingest) {
+        const ageH = (Date.now() - new Date(s.last_ingest + "Z")) / 36e5;
+        if (ageH > 36) { $("#stale").hidden = false; $("#stale").textContent = `⚠ data is ${Math.round(ageH)}h old`; }
+      }
+
+      const citySel = $("#f-city"), curCity = citySel.value;
+      citySel.innerHTML = '<option value="">All cities</option>' +
+        (s.cities || []).map((c) => `<option value="${esc(c.city)}">${esc(c.city)} (${c.n})</option>`).join("");
+      citySel.value = curCity;
+
+      const typeSel = $("#f-type"), curType = typeSel.value;
+      typeSel.innerHTML = '<option value="">All types</option>' +
+        (s.types || []).map((t) => `<option value="${esc(t.property_type)}">${esc(t.property_type)} (${t.n})</option>`).join("");
+      typeSel.value = curType;
+    }
+
+    async function loadRows() {
+      $("#loading").hidden = false; $("#err").hidden = true; $("#empty").hidden = true;
+      try {
+        const p = new URLSearchParams();
+        const vals = { city: $("#f-city").value, type: $("#f-type").value, q: $("#f-q").value.trim(),
+                       min_price: $("#f-min").value, max_price: $("#f-max").value, beds: $("#f-beds").value };
+        for (const [k, v] of Object.entries(vals)) if (v) p.set(k, v);
+        p.set("sort", sort); p.set("dir", dir); p.set("limit", "500");
+
+        const data = await getJSON("/api/listings?" + p);
+        const rows = data.listings || [];
+        $("#empty").hidden = rows.length > 0;
+        $("#rows").innerHTML = rows.map((r) => `
+          <tr>
+            <td class="addr">${esc(r.location)}</td>
+            <td>${dash(r.property_type)}</td>
+            <td><span class="a-tag">${dash(r.status)}</span></td>
+            <td class="price">${fmtPrice(r.price_num, r.price_text)}</td>
+            <td>${r.price_per_sqft != null ? "$" + Number(r.price_per_sqft).toLocaleString() : "—"}</td>
+            <td>${dash(r.bed)}</td>
+            <td>${dash(r.bath)}</td>
+            <td>${dash(r.sqft)}</td>
+            <td>${r.days_on_market != null ? esc(r.days_on_market) : "—"}</td>
+            <td>${dash(r.owner)}</td>
+            <td>${dash(r.city)}</td>
+          </tr>`).join("");
+        $("#foot").textContent = `Showing ${rows.length} listing(s) · sorted by ${sort} (${dir})`;
+      } catch (e) {
+        $("#err").hidden = false; $("#err").textContent = "Failed to load listings: " + e.message;
+      } finally {
+        $("#loading").hidden = true;
+        document.querySelectorAll(".arrow").forEach((a) => a.textContent = "");
+        const arrow = $("#a-" + sort); if (arrow) arrow.textContent = dir === "desc" ? "▼" : "▲";
+      }
+    }
+
+    document.querySelectorAll("th[data-sort]").forEach((th) => th.addEventListener("click", () => {
+      const s = th.dataset.sort;
+      if (sort === s) dir = dir === "desc" ? "asc" : "desc"; else { sort = s; dir = "desc"; }
+      loadRows();
+    }));
+    $("#apply").addEventListener("click", loadRows);
+    ["f-city","f-type"].forEach((id) => $("#"+id).addEventListener("change", loadRows));
+    $("#reset").addEventListener("click", () => {
+      ["f-q","f-min","f-max","f-beds"].forEach((id) => $("#"+id).value = "");
+      $("#f-city").value = ""; $("#f-type").value = ""; sort = "scraped"; dir = "desc"; loadRows();
+    });
+    $("#f-q").addEventListener("keydown", (e) => { if (e.key === "Enter") loadRows(); });
+
+    (async () => {
+      try { await loadStats(); } catch (e) { console.error(e); }
+      await loadRows();
+    })();
+  </script>
+</body>
+</html>

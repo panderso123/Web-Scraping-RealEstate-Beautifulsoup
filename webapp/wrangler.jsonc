@@ -1,0 +1,31 @@
+{
+  // Realtor listings dashboard — Cloudflare Worker (API) + D1 (storage) + static assets (UI)
+  "name": "realestate-dashboard",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",
+
+  // Static dashboard is served from ./public. Any path that is NOT a static file
+  // (i.e. /api/*) falls through to the Worker's fetch handler below.
+  "assets": { "directory": "./public" },
+
+  // D1 database binding. database_id is filled in by the deploy script after
+  // `wrangler d1 create realestate`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "realestate",
+      "database_id": "66fe261d-f632-4554-a64b-0526c05a0ff7"
+    }
+  ],
+
+  // Cities the cron refreshes from RentCast: "City,ST;City,ST".
+  // Kept to ONE city so a daily cron (~30 calls/mo) stays under RentCast's
+  // 50-call free tier. Add cities or a tighter cron only if you accept the
+  // $74/mo RentCast plan.
+  "vars": { "CITIES": "Stockton,CA" },
+
+  // Daily at 13:00 UTC. Widen at your own (RentCast) cost.
+  "triggers": { "crons": ["0 13 * * *"] },
+
+  "observability": { "enabled": true }
+}
