@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "scrape-to-csv",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["ScrapingToCsvFile.py", "--city", "Stockton_CA", "--output", "data/housing.csv", "--engine", "requests"],
+      "port": null
+    },
+    {
+      "name": "scrape-to-db",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["ScrapingToDB_TextFile.py"],
+      "port": null
+    }
+  ]
+}
