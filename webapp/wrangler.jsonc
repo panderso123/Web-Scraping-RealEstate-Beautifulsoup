@@ -25,12 +25,15 @@
   ],
 
   // Cities the cron refreshes from RentCast: "City,ST;City,ST".
-  // Kept to ONE city so a daily cron (~30 calls/mo) stays under RentCast's
-  // 50-call free tier. Add cities or a tighter cron only if you accept the
-  // $74/mo RentCast plan.
-  "vars": { "CITIES": "Stockton,CA" },
+  // Denver Metro, full coverage: 16 cities x daily = ~480 calls/mo, sized for
+  // the RentCast Foundation tier ($74/mo, 1000 calls) — the account must be
+  // upgraded or RentCast itself will refuse after its free 50.
+  "vars": {
+    "CITIES": "Denver,CO;Aurora,CO;Lakewood,CO;Arvada,CO;Westminster,CO;Thornton,CO;Centennial,CO;Boulder,CO;Broomfield,CO;Littleton,CO;Englewood,CO;Wheat Ridge,CO;Golden,CO;Parker,CO;Castle Rock,CO;Commerce City,CO",
+    "RENTCAST_MONTHLY_CAP": "1000"
+  },
 
-  // Daily at 13:00 UTC. Widen at your own (RentCast) cost.
+  // Daily at 13:00 UTC (07:00 Denver).
   "triggers": { "crons": ["0 13 * * *"] },
 
   "observability": { "enabled": true }
