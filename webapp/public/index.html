@@ -18,14 +18,20 @@
     .wrap { max-width: 1240px; margin: 0 auto; padding: var(--s4) var(--s4) var(--s6); }
     .mast-inner { max-width: 1240px; margin: 0 auto; padding: var(--s3) var(--s4); display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; }
     .mast-inner h1 { font-size: var(--t24); margin: 0; }
-    #stale { margin-left: auto; font-family: var(--mono); font-size: var(--t12); color: var(--warn); }
+    .osrow { max-width: 1240px; margin: 0 auto; padding: var(--s1) var(--s4) 0; display: flex; gap: var(--s3); font-family: var(--mono); font-size: var(--t9); letter-spacing: .19em; text-transform: uppercase; }
+    .osrow a { color: var(--muted); text-decoration: none; }
+    .osrow a:hover { color: var(--accent); }
+    .osrow a.oshere { color: var(--accent); font-weight: 600; }
+    /* stale = ochre chip (pigment on chip bg, ink text — house 'text-deepened' rule) */
+    #stale { margin-left: auto; font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; padding: 3px 6px; border-radius: 2px; background: var(--ochre-bg); color: var(--ink); border: 1px solid var(--line); }
 
     .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--s3); margin: var(--s4) 0; }
     .stat { border: 1px solid var(--line); border-top: 2px solid var(--ink); border-radius: 0 0 4px 4px; background: var(--surface); padding: var(--s3) var(--s4); }
-    .stat .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--t24); font-weight: 600; margin-top: var(--s1); }
+    /* stat number = documented stat-tile primitive: Josefin 700 --t31 */
+    .stat .v { font-family: var(--disp); font-variant-numeric: tabular-nums; font-size: var(--t31); font-weight: 700; margin-top: var(--s1); }
 
     .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s3); align-items: end; margin-bottom: var(--s4); }
-    .f label { display: block; font-family: var(--disp); font-size: var(--t9); font-weight: 600; letter-spacing: .19em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--s1); }
+    .f label { display: block; font-family: var(--mono); font-size: var(--t9); font-weight: 600; letter-spacing: .19em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--s1); }
     .f input, .f select { width: 100%; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); font-family: var(--serif); font-size: var(--t15); }
     .f input:focus, .f select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     .actions { display: flex; gap: var(--s2); }
@@ -33,14 +39,15 @@
     .table-wrap { border: 1px solid var(--line); border-top: 2px solid var(--ink); border-radius: 0 0 4px 4px; background: var(--surface); overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: var(--t15); }
     th, td { padding: var(--s2) var(--s3); text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
-    thead th { position: sticky; top: 0; background: var(--surface-2); font-family: var(--disp); font-size: var(--t12); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); border-bottom: 3px double var(--ink); user-select: none; }
-    th[data-sort] { cursor: pointer; }
-    th[data-sort]:hover { color: var(--accent); }
-    th .arrow { font-size: 9px; }
+    thead th { background: var(--surface-2); font-family: var(--disp); font-size: var(--t12); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); border-bottom: 3px double var(--ink); }
+    .sortbtn { all: unset; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+    .sortbtn:hover, .sortbtn:focus-visible { color: var(--accent); }
+    .sortbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    th .arrow { font-size: var(--t9); }
     tbody tr:hover { background: var(--surface-2); }
     td { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--t12); }
     td.addr { font-family: var(--serif); font-size: var(--t15); white-space: normal; min-width: 220px; }
-    td.price { color: var(--accent); font-weight: 600; }
+    td.price { color: var(--ink); font-weight: 600; }
     .empty, .loading, .errbox { padding: var(--s5); text-align: center; color: var(--muted); font-family: var(--serif); }
     .errbox { color: var(--danger); }
     .foot { font-family: var(--mono); font-size: var(--t9); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: var(--s3); }
@@ -49,7 +56,13 @@
   </style>
 </head>
 <body class="anderson">
-  <nav class="a-mast">
+  <nav class="a-mast" aria-label="Site">
+    <div class="osrow">
+      <a href="https://creativeconquests.online">Creative Conquests</a>
+      <a href="https://vault.creativeconquests.online/">Vault</a>
+      <a href="https://vault.creativeconquests.online/hub/">Hub</a>
+      <a class="oshere" href="/" aria-current="page">Listings</a>
+    </div>
     <div class="mast-inner">
       <h1>Real Estate Listings</h1>
       <span class="eyebrow">Licensed RentCast data &middot; refreshed daily</span>
@@ -60,9 +73,11 @@
   <div class="a-band" role="img" aria-label="The Study — house art, golden-ratio band crop"></div>
 
   <main class="wrap">
+    <h2>Market</h2>
     <section class="stats" id="stats" aria-label="Summary statistics"></section>
 
-    <section class="a-card" style="margin-bottom: var(--s4);">
+    <h2>Listings</h2>
+    <section class="a-card" style="margin: var(--s4) 0;">
       <div class="filters">
         <div class="f"><label for="f-city">City</label><select id="f-city"><option value="">All cities</option></select></div>
         <div class="f"><label for="f-type">Type</label><select id="f-type"><option value="">All types</option></select></div>
@@ -81,17 +96,17 @@
       <table>
         <thead>
           <tr>
-            <th data-sort="scraped">Address <span class="arrow" id="a-scraped"></span></th>
-            <th>Type</th>
-            <th>Status</th>
-            <th data-sort="price">Price <span class="arrow" id="a-price"></span></th>
-            <th data-sort="ppsf">$/SqFt <span class="arrow" id="a-ppsf"></span></th>
-            <th>Beds</th>
-            <th>Baths</th>
-            <th>SqFt</th>
-            <th data-sort="dom">DOM <span class="arrow" id="a-dom"></span></th>
-            <th>Agent</th>
-            <th>City</th>
+            <th scope="col" data-sort="scraped" aria-sort="descending"><button class="sortbtn">Address <span class="arrow" id="a-scraped" aria-hidden="true"></span></button></th>
+            <th scope="col">Type</th>
+            <th scope="col">Status</th>
+            <th scope="col" data-sort="price" aria-sort="none"><button class="sortbtn">Price <span class="arrow" id="a-price" aria-hidden="true"></span></button></th>
+            <th scope="col" data-sort="ppsf" aria-sort="none"><button class="sortbtn">$/SqFt <span class="arrow" id="a-ppsf" aria-hidden="true"></span></button></th>
+            <th scope="col">Beds</th>
+            <th scope="col">Baths</th>
+            <th scope="col">SqFt</th>
+            <th scope="col" data-sort="dom" aria-sort="none"><button class="sortbtn">DOM <span class="arrow" id="a-dom" aria-hidden="true"></span></button></th>
+            <th scope="col">Agent</th>
+            <th scope="col">City</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -182,11 +197,13 @@
         $("#loading").hidden = true;
         document.querySelectorAll(".arrow").forEach((a) => a.textContent = "");
         const arrow = $("#a-" + sort); if (arrow) arrow.textContent = dir === "desc" ? "▼" : "▲";
+        document.querySelectorAll("th[data-sort]").forEach((th) =>
+          th.setAttribute("aria-sort", th.dataset.sort === sort ? (dir === "desc" ? "descending" : "ascending") : "none"));
       }
     }
 
-    document.querySelectorAll("th[data-sort]").forEach((th) => th.addEventListener("click", () => {
-      const s = th.dataset.sort;
+    document.querySelectorAll("th[data-sort] .sortbtn").forEach((btn) => btn.addEventListener("click", () => {
+      const s = btn.closest("th").dataset.sort;
       if (sort === s) dir = dir === "desc" ? "asc" : "desc"; else { sort = s; dir = "desc"; }
       loadRows();
     }));

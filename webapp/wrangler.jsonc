@@ -18,6 +18,12 @@
     }
   ],
 
+  // Custom domain on the creativeconquests.online zone (same CF account).
+  // workers.dev URL keeps working alongside it.
+  "routes": [
+    { "pattern": "realestate.creativeconquests.online", "custom_domain": true }
+  ],
+
   // Cities the cron refreshes from RentCast: "City,ST;City,ST".
   // Kept to ONE city so a daily cron (~30 calls/mo) stays under RentCast's
   // 50-call free tier. Add cities or a tighter cron only if you accept the
