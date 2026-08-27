@@ -452,6 +452,15 @@ function buildOffmarketQuery(p: URLSearchParams) {
   const minv = p.get("min_value"); if (minv) { where.push("actual_value >= ?"); binds.push(parseInt(minv, 10)); }
   const maxv = p.get("max_value"); if (maxv) { where.push("actual_value <= ?"); binds.push(parseInt(maxv, 10)); }
   const myield = p.get("min_yield"); if (myield) { where.push("gross_yield_pct >= ?"); binds.push(parseFloat(myield)); }
+  // Normalize wildly different county prop_class labels into a coarse category.
+  // Commercial = income-producing CRE (incl. 4+ unit multifamily); it wins over
+  // residential on overlap so "RESIDENTIAL-MULTI UNIT APTS" reads as commercial.
+  const COMMERCIAL_LIKE = "(UPPER(prop_class) LIKE '%COMMERCIAL%' OR UPPER(prop_class) LIKE '%INDUSTRIAL%' OR UPPER(prop_class) LIKE '%OFFICE%' OR UPPER(prop_class) LIKE '%RETAIL%' OR UPPER(prop_class) LIKE '%STORE%' OR UPPER(prop_class) LIKE '%WAREHOUSE%' OR UPPER(prop_class) LIKE '%RESTAURANT%' OR UPPER(prop_class) LIKE '%HOTEL%' OR UPPER(prop_class) LIKE '%MOTEL%' OR UPPER(prop_class) LIKE '%LODGING%' OR UPPER(prop_class) LIKE '%SHOPPING%' OR UPPER(prop_class) LIKE '%BANK%' OR UPPER(prop_class) LIKE '%APART%' OR UPPER(prop_class) LIKE '%APT%' OR UPPER(prop_class) LIKE '%MULTI-UNIT%' OR UPPER(prop_class) LIKE '%MULTI UNIT%' OR UPPER(prop_class) LIKE '%MIXED%' OR UPPER(prop_class) LIKE '%MERCHAND%' OR UPPER(prop_class) LIKE '%MANUFACTUR%' OR UPPER(prop_class) LIKE '%MARKET%' OR UPPER(prop_class) LIKE '%SPECIAL PURPOSE%' OR UPPER(prop_class) LIKE '%STORAGE%' OR UPPER(prop_class) LIKE '%MEDICAL%' OR UPPER(prop_class) LIKE '%DENTAL%' OR UPPER(prop_class) LIKE '%GARAGE%' OR UPPER(prop_class) LIKE '%CAR WASH%' OR UPPER(prop_class) LIKE '%SUPERMARKET%' OR UPPER(prop_class) LIKE '%THEATER%' OR UPPER(prop_class) LIKE '%NURSING%' OR UPPER(prop_class) LIKE '%DAY CARE%' OR UPPER(prop_class) LIKE '%CENTER%' OR UPPER(prop_class) LIKE '%CONV STORE%' OR UPPER(prop_class) LIKE '%SERVICE STATION%' OR UPPER(prop_class) LIKE '%AUTO %' OR UPPER(prop_class) LIKE '%FACTORY%' OR UPPER(prop_class) LIKE '%FLEX%' OR UPPER(prop_class) LIKE '%DISTRIBUTION%')";
+  const LAND_LIKE = "(UPPER(prop_class) LIKE '%VACANT%' OR UPPER(prop_class) LIKE '%LAND%' OR UPPER(prop_class) LIKE '%AGRICUL%' OR UPPER(prop_class) LIKE '%FARM%' OR UPPER(prop_class) LIKE '%MINE%')";
+  const cat = p.get("category");
+  if (cat === "commercial") where.push(COMMERCIAL_LIKE);
+  else if (cat === "land") where.push(`${LAND_LIKE} AND NOT ${COMMERCIAL_LIKE}`);
+  else if (cat === "residential") where.push(`prop_class IS NOT NULL AND NOT ${COMMERCIAL_LIKE} AND NOT ${LAND_LIKE} AND UPPER(prop_class) NOT LIKE '%EXEMPT%'`);
   const limit = Math.min(parseInt(p.get("limit") || "200", 10) || 200, 1000);
   const sortCol = ({ value: "actual_value", sale: "last_sale_date", year: "year_built", yield: "gross_yield_pct" } as Record<string, string>)[p.get("sort") || ""] || "actual_value";
   const dir = (p.get("dir") || "desc").toLowerCase() === "asc" ? "ASC" : "DESC";

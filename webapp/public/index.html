@@ -146,6 +146,7 @@
     <section class="a-card" style="margin: var(--s4) 0;">
       <div class="filters">
         <div class="f"><label for="o-county">County</label><select id="o-county"><option value="">All counties</option></select></div>
+        <div class="f"><label for="o-category">Type</label><select id="o-category"><option value="">All types</option><option value="commercial">Commercial</option><option value="residential">Residential</option><option value="land">Land</option></select></div>
         <div class="f"><label for="o-q">Search</label><input id="o-q" placeholder="address / owner" /></div>
         <div class="f"><label for="o-min">Min value</label><input id="o-min" type="number" placeholder="800000" /></div>
         <div class="f"><label for="o-state">Owner state</label><input id="o-state" placeholder="e.g. CA" maxlength="2" /></div>
@@ -162,6 +163,7 @@
           <tr>
             <th scope="col">Property</th>
             <th scope="col">Value</th>
+            <th scope="col">Class</th>
             <th scope="col">Yield%</th>
             <th scope="col">Owner</th>
             <th scope="col">Owner state</th>
@@ -435,7 +437,7 @@
     /* ---------- off-market leads ---------- */
     async function loadOffmarket() {
       const p = new URLSearchParams();
-      const vals = { county: $("#o-county").value, q: $("#o-q").value.trim(),
+      const vals = { county: $("#o-county").value, category: $("#o-category").value, q: $("#o-q").value.trim(),
                      min_value: $("#o-min").value, owner_state: $("#o-state").value.trim() };
       for (const [k, v] of Object.entries(vals)) if (v) p.set(k, v);
       p.set("limit", "500");
@@ -448,6 +450,7 @@
           <tr>
             <td class="addr">${esc(r.situs_address)}${r.situs_city ? ", " + esc(r.situs_city) : ""}</td>
             <td class="price">${money(r.actual_value)}</td>
+            <td>${dash(r.prop_class)}</td>
             <td>${r.gross_yield_pct != null ? r.gross_yield_pct.toFixed(1) + "%" : "—"}</td>
             <td class="addr">${dash(r.owner_name)}</td>
             <td><span class="flag">${dash(r.owner_state)}</span></td>
@@ -467,6 +470,7 @@
     }
     $("#o-apply").addEventListener("click", loadOffmarket);
     $("#o-county").addEventListener("change", loadOffmarket);
+    $("#o-category").addEventListener("change", loadOffmarket);
     ["o-q","o-state"].forEach((id) => $("#"+id).addEventListener("keydown", (e) => { if (e.key === "Enter") loadOffmarket(); }));
 
     /* ---------- pre-foreclosures ---------- */
