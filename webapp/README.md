@@ -147,3 +147,22 @@ or export `/api/offmarket.csv`. Recon of all 7 metro counties (verified sources
 for assessor bulk, foreclosure/NED lists, tax-lien lists) lives in the session
 notes; Adams/Douglas/Boulder/Arapahoe/Broomfield adapters + NED PDF parsing are
 the natural next stage.
+
+## Commercial real estate — data-source decision (2026-08)
+
+The off-market layer already carries commercial properties from county assessor
+records (owner + mailing + value), segmented by the `category=commercial` filter
+— this is the Reonomy-style ownership intelligence that normally costs ~$500/mo,
+obtained free from public records.
+
+**On-market CRE listings (Crexi/LoopNet/CoStar): not integrated, by decision.**
+- Crexi has no public read API (its "Listing API" is a one-way inbound feed for
+  large brokerages only, partner-gated). Its ToS (§3.5) explicitly bans scraping
+  AND using its data to build a competing service; it is litigious about data and
+  runs active bot protection. Scraping it is off the table.
+- No cheap self-serve API exists for active CRE for-sale listings anywhere —
+  CoStar/LoopNet gate it behind $3k–23k/yr; RentCast excludes office/retail/
+  industrial in its own docs.
+- The one legit self-serve option evaluated was ATTOM (~$95/mo: mortgage/lien/
+  deed/foreclosure records, residential + commercial parcels) — deferred; the
+  free county commercial data was judged sufficient for now.
